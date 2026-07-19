@@ -19,6 +19,8 @@ const ANGLES = [
   'security or privacy aspects with current upstream CVEs',
 ]
 
+const BILLING_ERROR_PATTERN = /\b(error:\s*)?(insufficient balance|insufficient funds|balance exhausted|quota exceeded)\b/i
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -156,6 +158,16 @@ ${markdown}
 }
 
 main().catch((err) => {
-  console.error(`Fatal: ${err.message}`)
+  const stderr = String(err?.stderr ?? '')
+  const message = String(err?.message || 'Unknown error')
+  const errorText = `${message}\n${stderr}`.trim() || 'Unknown error'
+
+  // Scheduled generation should not fail the workflow solely due to external billing state.
+  if (BILLING_ERROR_PATTERN.test(errorText)) {
+    console.warn('Skipping generation: opencode provider has insufficient balance.')
+    process.exit(0)
+  }
+
+  console.error(`Fatal: ${message}`)
   process.exit(1)
 })
