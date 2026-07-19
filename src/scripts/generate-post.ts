@@ -157,7 +157,7 @@ ${markdown}
 
 main().catch((err) => {
   const stderr = String(err?.stderr || '')
-  const message = String(err?.message || err)
+  const message = String(err?.message || 'Unknown error')
   const errorText = `${message}\n${stderr}`
 
   // Scheduled generation should not fail the workflow solely due to external billing state.
