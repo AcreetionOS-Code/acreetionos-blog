@@ -15,16 +15,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install opencode CLI
-        run: |
-          curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
-          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
       - name: Generate blog post
         run: npx tsx src/scripts/generate-post.ts
         env:
-          # Auth JSON for opencode-go provider — stored as a single encrypted secret
-          OPENCODE_AUTH_JSON: ${{ secrets.OPENCODE_AUTH_JSON }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
           CONTENT_PROMPT: ${{ secrets.CONTENT_PROMPT }}
       - name: Commit and push
         run: |

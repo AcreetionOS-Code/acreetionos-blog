@@ -1,9 +1,6 @@
-import { execSync } from 'node:child_process'
 import { writeFile, mkdir } from 'node:fs/promises'
-import { mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { homedir } from 'node:os'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const POSTS_DIR = join(__dirname, '..', 'content', 'posts')
@@ -27,53 +24,38 @@ function slugify(text: string): string {
     .slice(0, 60)
 }
 
-/**
- * Run opencode CLI with a prompt and return the output.
- * Reads OPENCODE_AUTH_JSON from env to set up credentials securely.
- *
- * opencode looks for auth in $HOME/.local/share/opencode/auth.json by default.
- * We write the file directly to that path with 0600 perms, then wipe it after.
- */
-function runOpencode(prompt: string): string {
-  // Allow explicit override, then try common npm global locations
-  // opencode is installed by the workflow and added to PATH
-  const opencodeBin = process.env.OPENCODE_BIN || 'opencode'
-  const authJson = process.env.OPENCODE_AUTH_JSON
-  const home = homedir()
-  const opencodeDataDir = join(home, '.local', 'share', 'opencode')
-  const authFile = join(opencodeDataDir, 'auth.json')
-  let wroteAuth = false
+async function runOpenRouter(prompt: string): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is required')
 
-  try {
-    if (authJson) {
-      // Write auth.json to the exact path opencode expects
-      mkdirSync(opencodeDataDir, { recursive: true, mode: 0o700 })
-      writeFileSync(authFile, authJson, { encoding: 'utf-8' })
-      chmodSync(authFile, 0o600)
-      wroteAuth = true
-    }
+  const model = process.env.OPENROUTER_MODEL || 'openrouter/free'
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
 
-    const result = execSync(`${opencodeBin} run ${JSON.stringify(prompt)}`, {
-      encoding: 'utf-8',
-      maxBuffer: 50 * 1024 * 1024,
-      env: {
-        ...process.env,
-        HOME: home,
-        OPENCODE_NO_TELEMETRY: '1',
-      },
-      timeout: 120_000,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
-    })
+  const payload = await response.json().catch(() => null) as
+    | {
+        error?: { message?: string }
+        message?: string
+        choices?: Array<{ message?: { content?: string } }>
+      }
+    | null
 
-    return result.trim()
-  } finally {
-    // Wipe credentials from disk the moment we're done
-    // Only remove the auth file itself — never touch the rest of the dir
-    if (wroteAuth) {
-      try { rmSync(authFile, { force: true }) } catch { /* best-effort */ }
-    }
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || payload?.message || `OpenRouter request failed with status ${response.status}`)
   }
+
+  const output = payload?.choices?.[0]?.message?.content?.trim()
+  if (!output) throw new Error('OpenRouter returned empty response')
+  return output
 }
 
 async function main() {
@@ -99,8 +81,7 @@ Write about ${subject}, focusing on ${angle}.
 Include: 3-5 substantive paragraphs, code snippets where relevant, reference to real CVEs. Technically accurate, informative, genuine open-source community voice.`
 
   console.log(`Generating post about "${subject}" (angle: ${angle})...`)
-  const output = runOpencode(prompt)
-  if (!output) throw new Error('opencode returned empty response')
+  const output = await runOpenRouter(prompt)
 
   // Try structured format first
   let title = 'Untitled Post'
@@ -178,7 +159,7 @@ main().catch((err) => {
   }
 
   if ([error.message, error.stderr, error.stdout].some(hasBillingBalanceError)) {
-    console.warn('Warning: OpenCode billing balance is insufficient, skipping this generation run.')
+    console.warn('Warning: OpenRouter billing balance is insufficient, skipping this generation run.')
     process.exit(0)
   }
 
