@@ -161,10 +161,14 @@ main().catch((err) => {
     stderr?: unknown
     stdout?: unknown
   }
-  const toStringValue = (value: unknown) => (typeof value === 'string' ? value : String(value ?? ''))
+  const toStringValue = (value: unknown) => {
+    if (typeof value === 'string') return value
+    if (value && typeof value === 'object') return JSON.stringify(value)
+    return String(value ?? '')
+  }
   const hasBillingBalanceError = (value: unknown) => {
     const text = toStringValue(value)
-    return /billing.*insufficient balance|insufficient balance.*billing/i.test(text)
+    return /insufficient balance/i.test(text) && /billing/i.test(text)
   }
 
   if ([error.message, error.stderr, error.stdout].some(hasBillingBalanceError)) {
