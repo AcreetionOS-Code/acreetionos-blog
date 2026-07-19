@@ -156,6 +156,15 @@ ${markdown}
 }
 
 main().catch((err) => {
-  console.error(`Fatal: ${err.message}`)
+  const details = [err?.message, err?.stderr, err?.stdout]
+    .map((value) => (typeof value === 'string' ? value : String(value ?? '')))
+    .join('\n')
+
+  if (/insufficient balance/i.test(details)) {
+    console.warn('Warning: OpenCode billing balance is insufficient, skipping this generation run.')
+    process.exit(0)
+  }
+
+  console.error(`Fatal: ${err?.message || err}`)
   process.exit(1)
 })
