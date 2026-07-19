@@ -41,16 +41,31 @@ async function runOpenRouter(prompt: string): Promise<string> {
     }),
   })
 
-  const payload = await response.json().catch(() => null) as
+  const rawBody = await response.text()
+  let payload: {
+    error?: { message?: string }
+    message?: string
+    choices?: Array<{ message?: { content?: string } }>
+  } | null = null
+
+  try {
+    payload = JSON.parse(rawBody) as
     | {
         error?: { message?: string }
         message?: string
         choices?: Array<{ message?: { content?: string } }>
       }
-    | null
+  } catch {
+    payload = null
+  }
 
   if (!response.ok) {
-    throw new Error(payload?.error?.message || payload?.message || `OpenRouter request failed with status ${response.status}`)
+    throw new Error(
+      payload?.error?.message ||
+      payload?.message ||
+      rawBody ||
+      `OpenRouter request failed with status ${response.status}`,
+    )
   }
 
   const output = payload?.choices?.[0]?.message?.content?.trim()
