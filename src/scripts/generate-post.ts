@@ -28,7 +28,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isOpenRouterResponse(value: unknown): value is OpenRouterResponse {
   if (!isObject(value)) return false
-  return true
+  return 'choices' in value || 'error' in value || 'message' in value
 }
 
 function slugify(text: string): string {
@@ -67,11 +67,11 @@ async function runOpenRouter(prompt: string): Promise<string> {
   }
 
   if (!response.ok) {
-    const responseSnippet = rawBody.slice(0, 500)
+    const responsePreview = rawBody.slice(0, 500)
     throw new Error(
       payload?.error?.message ||
       payload?.message ||
-      responseSnippet ||
+      responsePreview ||
       `OpenRouter request failed with status ${response.status}`,
     )
   }
