@@ -22,6 +22,15 @@ type OpenRouterResponse = {
   choices?: Array<{ message?: { content?: string } }>
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isOpenRouterResponse(value: unknown): value is OpenRouterResponse {
+  if (!isObject(value)) return false
+  return true
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -51,16 +60,18 @@ async function runOpenRouter(prompt: string): Promise<string> {
   let payload: OpenRouterResponse | null = null
 
   try {
-    payload = JSON.parse(rawBody) as OpenRouterResponse
+    const parsed: unknown = JSON.parse(rawBody)
+    payload = isOpenRouterResponse(parsed) ? parsed : null
   } catch {
     payload = null
   }
 
   if (!response.ok) {
+    const responseSnippet = rawBody.slice(0, 500)
     throw new Error(
       payload?.error?.message ||
       payload?.message ||
-      rawBody ||
+      responseSnippet ||
       `OpenRouter request failed with status ${response.status}`,
     )
   }
