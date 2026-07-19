@@ -16,6 +16,12 @@ const ANGLES = [
   'security or privacy aspects with current upstream CVEs',
 ]
 
+type OpenRouterResponse = {
+  error?: { message?: string }
+  message?: string
+  choices?: Array<{ message?: { content?: string } }>
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -42,19 +48,10 @@ async function runOpenRouter(prompt: string): Promise<string> {
   })
 
   const rawBody = await response.text()
-  let payload: {
-    error?: { message?: string }
-    message?: string
-    choices?: Array<{ message?: { content?: string } }>
-  } | null = null
+  let payload: OpenRouterResponse | null = null
 
   try {
-    payload = JSON.parse(rawBody) as
-    | {
-        error?: { message?: string }
-        message?: string
-        choices?: Array<{ message?: { content?: string } }>
-      }
+    payload = JSON.parse(rawBody) as OpenRouterResponse
   } catch {
     payload = null
   }
