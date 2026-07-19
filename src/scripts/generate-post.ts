@@ -156,10 +156,11 @@ ${markdown}
 }
 
 main().catch((err) => {
-  const stderr = typeof err?.stderr === 'string' ? err.stderr : String(err?.stderr || '')
+  const stderr = String(err?.stderr || '')
   const message = String(err?.message || err)
   const errorText = `${message}\n${stderr}`
 
+  // Scheduled generation should not fail the workflow solely due to external billing state.
   if (/insufficient balance/i.test(errorText)) {
     console.warn('Skipping generation: opencode provider has insufficient balance.')
     process.exit(0)
