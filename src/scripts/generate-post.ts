@@ -15,6 +15,7 @@ const ANGLES = [
   'performance benchmarks or optimizations',
   'security or privacy aspects with current upstream CVEs',
 ]
+const MAX_ERROR_PREVIEW_LENGTH = 500
 
 type OpenRouterResponse = {
   error?: { message?: string }
@@ -28,6 +29,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isOpenRouterResponse(value: unknown): value is OpenRouterResponse {
   if (!isObject(value)) return false
+  if ('choices' in value && value.choices !== undefined && !Array.isArray(value.choices)) return false
+  if ('error' in value && value.error !== undefined && !isObject(value.error)) return false
+  if ('message' in value && value.message !== undefined && typeof value.message !== 'string') return false
   return 'choices' in value || 'error' in value || 'message' in value
 }
 
@@ -67,7 +71,7 @@ async function runOpenRouter(prompt: string): Promise<string> {
   }
 
   if (!response.ok) {
-    const responsePreview = rawBody.slice(0, 500)
+    const responsePreview = rawBody.slice(0, MAX_ERROR_PREVIEW_LENGTH)
     throw new Error(
       payload?.error?.message ||
       payload?.message ||
