@@ -156,6 +156,15 @@ ${markdown}
 }
 
 main().catch((err) => {
-  console.error(`Fatal: ${err.message}`)
+  const stderr = typeof err?.stderr === 'string' ? err.stderr : String(err?.stderr || '')
+  const message = String(err?.message || err)
+  const errorText = `${message}\n${stderr}`
+
+  if (/insufficient balance/i.test(errorText)) {
+    console.warn('Skipping generation: opencode provider has insufficient balance.')
+    process.exit(0)
+  }
+
+  console.error(`Fatal: ${message}`)
   process.exit(1)
 })
