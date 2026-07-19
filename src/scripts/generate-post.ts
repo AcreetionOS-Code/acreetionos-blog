@@ -156,17 +156,13 @@ ${markdown}
 }
 
 main().catch((err) => {
-  const asText = (value: unknown) => (typeof value === 'string' ? value : String(value ?? ''))
+  const toStringValue = (value: unknown) => (typeof value === 'string' ? value : String(value ?? ''))
   const hasBillingBalanceError = (value: unknown) => {
-    const text = asText(value)
-    return /insufficient balance/i.test(text) && /billing/i.test(text)
+    const text = toStringValue(value)
+    return /billing.*insufficient balance|insufficient balance.*billing/i.test(text)
   }
 
-  if (
-    hasBillingBalanceError(err?.message) ||
-    hasBillingBalanceError(err?.stderr) ||
-    hasBillingBalanceError(err?.stdout)
-  ) {
+  if ([err?.message, err?.stderr, err?.stdout].some(hasBillingBalanceError)) {
     console.warn('Warning: OpenCode billing balance is insufficient, skipping this generation run.')
     process.exit(0)
   }
