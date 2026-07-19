@@ -158,9 +158,21 @@ ${markdown}
 }
 
 main().catch((err) => {
-  const stderr = String(err?.stderr ?? '')
-  const message = String(err?.message || 'Unknown error')
-  const errorText = `${message}\n${stderr}`.trim() || 'Unknown error'
+  const error = (typeof err === 'object' && err !== null ? err : {}) as {
+    message?: unknown
+    stderr?: unknown
+    stdout?: unknown
+  }
+  const toStringValue = (value: unknown): string => {
+    if (typeof value === 'string') return value
+    if (value && typeof value === 'object') {
+      try { return JSON.stringify(value) } catch { return String(value) }
+    }
+    return String(value ?? '')
+  }
+
+  const message = toStringValue(error.message) || String(err) || 'Unknown error'
+  const errorText = [error.message, error.stderr, error.stdout].map(toStringValue).join('\n').trim() || 'Unknown error'
 
   // Scheduled generation should not fail the workflow solely due to external billing state.
   if (BILLING_ERROR_PATTERN.test(errorText)) {
